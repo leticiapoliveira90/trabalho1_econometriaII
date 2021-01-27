@@ -1,0 +1,98 @@
+---
+title: "Trabalho Econometria II"
+author: "Grupo 6"
+date: "20/01/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+par(mfrow = c(1,1))
+# Lendo o arquivo e plotando o gráfico da série temporal
+library(tidyverse)
+library(readr)
+emprego <- read_csv("C:/Users/angel/Downloads/ipeadata[20-01-2021-02-19].csv")
+emprego <- emprego %>% 
+  rename(Saldo = `Empregados - saldo - Pessoa - Ministério do Trabalho e Emprego- Cadastro Geral de Empregados e Desempregados (MTE/CAGED) - CAGED12_SALDO12`) %>% 
+  select(Data, Saldo)
+emprego <- emprego %>% 
+  filter(Data > 2000.01)
+emprego_ts <- ts(emprego, start = c(2000, 1), frequency = 12)
+plot(emprego_ts[,2], xlab = "Período", ylab = "Saldo",
+     main = "Saldo de empregos formais ao longo dos anos")
+```
+
+```{r}
+# FAC e FACP em nível
+acf(emprego_ts[,2], xlab = "Defasagem", ylab = "FAC", 
+    main = "Função de autocorrelação (em nível)", lag.max = 36)
+pacf(emprego_ts[,2], xlab = "Defasagem", ylab = "FACP",
+     main = "Função de autocorrelação parcial (em nível)", lag.max = 36)
+# Decompondo a série
+plot(decompose(emprego_ts[,2]))
+```
+
+```{r}
+# primeira diferença da série
+plot(diff(emprego_ts[,2], lag = 1, differences = 1), ylab = "", xlab = "Período",
+     main = "Primeira diferença do emprego\nformal no tempo")
+# FACs e identificação do modelo com componente sazonal
+acf(diff(emprego_ts[,2], lag = 1, differences = 1), ylab = "FAC", xlab = "Defasagem", main = "Função de autocorrelação (primeira diferença)", lag.max = 48)
+acf(diff(diff(emprego_ts[,2], lag = 1), lag = 12), lag.max = 48,
+main = "Função de autocorrelação\n(primeira diferença e primeira diferença sazonal)", ylab = "FAC", xlab = "Defasagem")
+pacf(diff(diff(emprego_ts[,2], lag = 1), lag = 12), lag.max = 48,
+main = "Função de autocorrelação parcial\n(primeira diferença e primeira diferença sazonal)", ylab = "FACP", xlab = "Defasagem")
+```
+
+```{r}
+# pacote para teste de raíz unitária
+library(urca)
+# teste de raíz unitária -variável em nível
+summary(ur.df(emprego_ts[,2], type = c("none"), lags = 24, selectlags = "BIC"))
+summary(ur.df(emprego_ts[,2], type = c("drift"), lags = 24, selectlags = "BIC"))
+summary(ur.df(emprego_ts[,2], type = c("trend"), lags = 24, selectlags = "BIC"))
+# teste de raíz unitária - variável em primeira diferença
+summary(ur.df(diff(emprego_ts[,2], lag = 1), type = c("none"), lags = 24, selectlags = "BIC"))
+summary(ur.df(diff(emprego_ts[,2], lag = 1), type = c("drift"), lags = 24, selectlags = "BIC"))
+summary(ur.df(diff(emprego_ts[,2], lag = 1), type = c("trend"), lags = 24, selectlags = "BIC"))
+# teste de raíz unitária - variável em nível e primeira diferença sazonal
+summary(ur.df(diff(emprego_ts[,2], lag = 12), type = c("none"), lags = 24, selectlags = "BIC"))
+summary(ur.df(diff(emprego_ts[,2], lag = 12), type = c("drift"), lags = 24, selectlags = "BIC"))
+summary(ur.df(diff(emprego_ts[,2], lag = 12), type = c("trend"), lags = 24, selectlags = "BIC"))
+# teste de raíz unitária - variável em primeira diferença e primeira diferença sazonal
+summary(ur.df(diff(diff(emprego_ts[,2], lag = 1), lag = 12), type = c("none"), lags = 24, selectlags = "BIC"))
+summary(ur.df(diff(diff(emprego_ts[,2], lag = 1), lag = 12), type = c("drift"), lags = 24, selectlags = "BIC"))
+summary(ur.df(diff(diff(emprego_ts[,2], lag = 1), lag = 12), type = c("trend"), lags = 24, selectlags = "BIC"))
+```
+
+```{r}
+# estimação do modelo SARIMA
+library(forecast)
+library(tseries)
+library(FitAR)
+library(FinTS)
+library(lmtest)
+
+# Modelos candidatos: SARIMA(p,d,q)(P,D,Q) com combinações de ordem d = D = 1 e  p, P, q, Q
+fit1 <- coeftest(Arima(emprego_ts[,2], order = c(1,1,0), seasonal = list(order = c(0,1,0), period = 12))); fit1 #candidato1
+fit2 <- coeftest(Arima(emprego_ts[,2], order = c(1,1,1), seasonal = list(order = c(0,1,0), period = 12))); fit2  #candidato2
+fit3 <- coeftest(Arima(emprego_ts[,2], order = c(2,1,1), seasonal = list(order = c(0,1,0), period = 12))); fit3
+fit4 <- coeftest(Arima(emprego_ts[,2], order = c(1,1,2), seasonal = list(order = c(0,1,0), period = 12))); fit4
+fit5 <- coeftest(Arima(emprego_ts[,2], order = c(1,1,1), seasonal = list(order = c(1,1,0), period = 12))); fit5 #candidato3
+fit6 <- coeftest(Arima(emprego_ts[,2], order = c(1,1,1), seasonal = list(order = c(0,1,1), period = 12))); fit6
+fit7 <- coeftest(Arima(emprego_ts[,2], order = c(1,1,1), seasonal = list(order = c(1,1,1), period = 12))); fit7
+fit8 <- coeftest(auto.arima(emprego_ts[,2])); fit8 #candidato4
+auto.arima(emprego_ts[,2]); fit8
+fit9 <- coeftest(Arima(emprego_ts[,2], order = c(1,0,2), seasonal = list(order = c(0,1,1), period = 12))); fit9
+auto.arima(emprego_ts[,2])
+```
+
+```{r}
+
+```
+
