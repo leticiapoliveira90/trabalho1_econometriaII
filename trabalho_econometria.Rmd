@@ -42,10 +42,17 @@ acf(emprego_ts[,2], xlab = "Defasagem", ylab = "FAC",
     main = "Função de autocorrelação (em nível)", lag.max = 48)
 pacf(emprego_ts[,2], xlab = "Defasagem", ylab = "FACP",
      main = "Função de autocorrelação parcial (em nível)", lag.max = 48)
-# teste de raíz unitária -variável em nível
+# teste de raíz unitária (ADF) - variável em nível - não estacionário
 summary(ur.df(emprego_ts[,2], type = c("none"), lags = 24, selectlags = "BIC"))
 summary(ur.df(emprego_ts[,2], type = c("drift"), lags = 24, selectlags = "BIC"))
 summary(ur.df(emprego_ts[,2], type = c("trend"), lags = 24, selectlags = "BIC"))
+# teste de raíz unitária (PP) - variável em nível - estacionário
+summary(ur.pp(emprego_ts[,2], type = c("Z-tau"), model = c("constant"), lags = c("short")))
+summary(ur.pp(emprego_ts[,2], type = c("Z-tau"), model = c("trend"), lags = c("short")))
+# teste de raíz unitária (KPSS) - variável em nível - não estacionário
+# LEMBRETE: H0 nesse teste é a hipótese de que a variável é estacionária
+summary(ur.kpss(emprego_ts[,2], type = c("mu"), lags = c("short")))
+summary(ur.kpss(emprego_ts[,2], type = c("tau"), lags = c("short")))
 ```
 
 ```{r}
@@ -57,11 +64,17 @@ acf(diff(emprego_ts[,2], lag = 12), lag.max = 48,
 main = "Função de autocorrelação\n(primeira diferença sazonal)", ylab = "FAC", xlab = "Defasagem")
 pacf(diff(emprego_ts[,2], lag = 12), lag.max = 48,
 main = "Função de autocorrelação parcial\n(primeira diferença sazonal)", ylab = "FACP", xlab = "Defasagem")
-# teste de raíz unitária - variável em nível e primeira diferença sazonal
+# teste de raíz unitária (ADF) - variável em nível e primeira diferença sazonal - estacionário
 summary(ur.df(diff(emprego_ts[,2], lag = 12), type = c("none"), lags = 24, selectlags = "BIC"))
 summary(ur.df(diff(emprego_ts[,2], lag = 12), type = c("drift"), lags = 24, selectlags = "BIC"))
 summary(ur.df(diff(emprego_ts[,2], lag = 12), type = c("trend"), lags = 24, selectlags = "BIC"))
-
+# teste de raíz unitária (PP) - variável em nível e primeira diferença sazonal - estacionário
+summary(ur.pp(diff(emprego_ts[,2], lag = 12), type = c("Z-tau"), model = c("constant"), lags = c("short")))
+summary(ur.pp(diff(emprego_ts[,2], lag = 12), type = c("Z-tau"), model = c("trend"), lags = c("short")))
+# teste de raíz unitária (KPSS) - variável em nível e primeira diferença sazonal - estacionário
+# LEMBRETE: H0 nesse teste é a hipótese de que a variável é estacionária
+summary(ur.kpss(diff(emprego_ts[,2], lag = 12), type = c("mu"), lags = c("short")))
+summary(ur.kpss(diff(emprego_ts[,2], lag = 12), type = c("tau"), lags = c("short")))
 ```
 
 ```{r}
@@ -95,7 +108,7 @@ mod5 <- Arima(emprego_ts[,2], order = c(1,0,2), seasonal = list(order = c(1,1,1)
 mod6 <- Arima(emprego_ts[,2], order = c(1,0,2), seasonal = list(order = c(1,1,2), period = 12))
 mod7 <- Arima(emprego_ts[,2], order = c(1,0,2), seasonal = list(order = c(2,1,1), period = 12))
 mod8 <- auto.arima(emprego_ts[,2])
-# critério Akaike
+# critério Akaike e Bayesiano
 AIC(mod1, mod2, mod3, mod4,mod5, mod6, mod7, mod8) # mod5 e mod8
 BIC(mod1, mod2, mod3, mod4,mod5, mod6, mod7, mod8) # mod5 e mod8
 ```
